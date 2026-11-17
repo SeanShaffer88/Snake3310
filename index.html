@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Nokia 3310 Snake</title>
+    <!-- Tailwind CSS for modern layout structure -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for authentic retro typography feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* Custom fonts and retro LCD glow effects */
+        .font-lcd { font-family: 'Share Tech Mono', monospace; }
+        .font-pixel { font-family: 'Press Start 2P', monospace; }
+        
+        /* Authentic Nokia 3310 deep charcoal matte case gradient */
+        .nokia-case {
+            background: linear-gradient(145deg, #2b303b, #1a1e26);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.1);
+        }
+
+        /* LCD Screen Bezel & Screen Styling */
+        .lcd-screen {
+            background-color: #9ead86;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Scanline and phosphor glow overlays for retro look */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.15) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 3px, 4px 100%;
+            pointer-events: none;
+        }
+
+        /* LCD pixel dot matrix pattern background */
+        .lcd-grid {
+            background-image: radial-gradient(rgba(45, 53, 39, 0.15) 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+
+        /* Custom soft tactile button styles for the keypad */
+        .nokia-btn {
+            background: linear-gradient(145deg, #373e4d, #252a35);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            transition: all 0.05s ease;
+        }
+        .nokia-btn:active, .nokia-btn.pressed {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(145deg, #222630, #1d212a);
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #373e4d; border-radius: 2px; }
+    </style>
+</head>
+<body class="min-h-full bg-slate-950 flex flex-col items-center justify-center select-none overflow-x-hidden p-2 sm:p-4 text-slate-100">
+
+    <!-- Main Container -->
+    <div class="relative w-full max-w-sm sm:max-w-md flex flex-col items-center">
+        
+        <!-- Top speaker grill simulation -->
+        <div class="w-24 h-2 bg-slate-800 rounded-full mb-3 flex justify-between items-center px-1 shadow-inner opacity-75">
+            <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+        </div>
+
+        <!-- Nokia 3310 Physical Body Bezel -->
+        <div class="nokia-case w-full rounded-[2.5rem] p-5 sm:p-7 border border-slate-700/50 flex flex-col items-center relative">
+            
+            <!-- Nokia Logo Watermark -->
+            <div class="absolute top-3 font-pixel text-[10px] text-slate-400/60 tracking-widest uppercase">Nokia 3310</div>
+
+            <!-- LCD Screen Container -->
+            <div class="w-full mt-4 rounded-xl p-2.5 lcd-screen relative overflow-hidden border-2 border-slate-800/80">
+                
+                <div class="absolute inset-0 scanlines z-10"></div>
+                <div class="absolute inset-0 lcd-grid z-0"></div>
+
+                <!-- HUD Header Bar -->
+                <div class="relative z-20 flex justify-between items-center mb-1 px-1 text-[#2d3527] font-pixel text-[10px] border-b border-[#2d3527]/20 pb-1">
+                    <div class="flex items-center gap-1">
+                        <span>SC:</span>
+                        <span id="scoreDisplay" class="font-bold">0</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span>LVL:</span>
+                        <span id="levelDisplay" class="font-bold">1</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span>HI:</span>
+                        <span id="highScoreDisplay" class="font-bold">0</span>
+                    </div>
+                </div>
+
+                <!-- Canvas Game Viewport -->
+                <div class="relative z-20 w-full aspect-square flex justify-center items-center bg-[#8b9c75] rounded border border-[#2d3527]/30 overflow-hidden shadow-inner">
+                    <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- Overlay Message / Menu Inside Screen -->
+                    <div id="screenOverlay" class="absolute inset-0 bg-[#9ead86]/90 z-30 flex flex-col items-center justify-center text-center p-4 transition-opacity duration-200">
+                        <div class="font-pixel text-[#1d2417] text-sm sm:text-base mb-2 animate-pulse" id="overlayTitle">SNAKE</div>
+                        <div class="font-lcd text-[#2d3527] text-xs sm:text-sm mb-4 max-w-[200px]" id="overlaySubtitle">Press Start or Direction to Play</div>
+                        <button id="overlayBtn" class="bg-[#2d3527] text-[#9ead86] font-pixel text-[10px] px-3 py-2 rounded shadow hover:bg-[#1d2417] active:scale-95 transition">
+                            START GAME
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Screen Footer status -->
+                <div class="relative z-20 flex justify-between items-center mt-1 px-1 text-[9px] font-pixel text-[#2d3527]/70">
+                    <span id="soundStatus">SND: ON</span>
+                    <span id="pauseStatus"></span>
+                    <span>3310-OS</span>
+                </div>
+            </div>
+
+            <!-- Controls & Keypad Area -->
+            <div class="w-full mt-6 flex flex-col items-center gap-4">
+                
+                <div class="w-full flex justify-between px-2">
+                    <button id="menuBtn" class="nokia-btn text-slate-300 font-pixel text-[9px] px-4 py-2 rounded-lg flex items-center gap-1 shadow">
+                        <span>MENU</span>
+                    </button>
+                    <button id="soundToggleBtn" class="nokia-btn text-slate-300 font-pixel text-[9px] px-3 py-2 rounded-lg flex items-center gap-1 shadow">
+                        <span>🔊 SND</span>
+                    </button>
+                </div>
+
+                <!-- Directional Pad & Action cluster -->
+                <div class="flex items-center justify-between w-full px-4 my-1">
+                    <div class="relative w-28 h-28 bg-slate-900/60 rounded-full p-2 flex items-center justify-center border border-slate-700/40 shadow-inner">
+                        <button id="btnUp" class="nokia-btn absolute top-1.5 w-10 h-8 rounded-t-lg flex items-center justify-center text-slate-200 font-bold text-sm">▲</button>
+                        <button id="btnLeft" class="nokia-btn absolute left-1.5 w-8 h-10 rounded-l-lg flex items-center justify-center text-slate-200 font-bold text-sm">◀</button>
+                        <button id="btnRight" class="nokia-btn absolute right-1.5 w-8 h-10 rounded-r-lg flex items-center justify-center text-slate-200 font-bold text-sm">▶</button>
+                        <button id="btnDown" class="nokia-btn absolute bottom-1.5 w-10 h-8 rounded-b-lg flex items-center justify-center text-slate-200 font-bold text-sm">▼</button>
+                        <button id="btnAction" class="nokia-btn w-9 h-9 rounded-full flex items-center justify-center text-[9px] font-pixel text-slate-300 shadow">OK</button>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <button id="btnPause" class="nokia-btn px-4 py-2 rounded-lg text-slate-300 font-pixel text-[9px]">PAUSE</button>
+                        <button id="btnRestart" class="nokia-btn px-4 py-2 rounded-lg text-rose-300 font-pixel text-[9px]">RESET</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 w-full px-2">
+                    <button class="nokia-btn py-1.5 rounded text-slate-400 font-lcd text-xs">1</button>
+                    <button class="nokia-btn py-1.5 rounded text-slate-400 font-lcd text-xs">2 ABC</button>
+                    <button class="nokia-btn py-1.5 rounded text-slate-400 font-lcd text-xs">3 DEF</button>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="mt-4 text-center text-slate-500 font-lcd text-xs">
+            Controls: Arrow Keys / WASD or D-Pad. Space to Pause/Resume.
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Web Audio API Synthesizer
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'eat') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'move') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, now);
+                gain.gain.setValueAtTime(0.02, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                osc.start(now);
+                osc.stop(now + 0.03);
+            } else if (type === 'gameover') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.35);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'start') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+        }
+
+        // Game Engine Setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const GRID_SIZE = 20;
+        let tileSize = 20;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = container.clientWidth;
+            canvas.width = size;
+            canvas.height = size;
+            tileSize = size / GRID_SIZE;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let snake = [];
+        let direction = { x: 1, y: 0 };
+        let nextDirection = { x: 1, y: 0 };
+        let food = { x: 5, y: 5, special: false, timer: 0 };
+        let obstacles = [];
+        let particles = [];
+        let score = 0;
+        let highScore = localStorage.getItem('nokia_snake_highscore') || 0;
+        let level = 1;
+        let gameInterval = null;
+        let gameSpeed = 110;
+        let gameState = 'IDLE';
+
+        document.getElementById('highScoreDisplay').innerText = highScore;
+
+        const COLOR_BG = '#8b9c75';
+        const COLOR_SNAKE = '#1d2417';
+        const COLOR_FOOD = '#1d2417';
+        const COLOR_OBSTACLE = '#2d3527';
+
+        function initGame() {
+            snake = [
+                { x: 10, y: 10 },
+                { x: 9, y: 10 },
+                { x: 8, y: 10 }
+            ];
+            direction = { x: 1, y: 0 };
+            nextDirection = { x: 1, y: 0 };
+            score = 0;
+            level = 1;
+            gameSpeed = 110;
+            particles = [];
+            spawnFood();
+            generateObstacles();
+            updateUI();
+        }
+
+        function spawnFood() {
+            let valid = false;
+            while (!valid) {
+                food.x = Math.floor(Math.random() * GRID_SIZE);
+                food.y = Math.floor(Math.random() * GRID_SIZE);
+                food.special = Math.random() < 0.2;
+                food.timer = food.special ? 40 : 0;
+
+                valid = true;
+                for (let part of snake) {
+                    if (part.x === food.x && part.y === food.y) valid = false;
+                }
+                for (let obs of obstacles) {
+                    if (obs.x === food.x && obs.y === food.y) valid = false;
+                }
+            }
+        }
+
+        function generateObstacles() {
+            obstacles = [];
+            if (level >= 3) {
+                const wallConfigs = {
+                    3: [{x: 5, y: 5}, {x: 14, y: 5}, {x: 5, y: 14}, {x: 14, y: 14}],
+                    4: [{x: 10, y: 4}, {x: 10, y: 5}, {x: 10, y: 14}, {x: 10, y: 15}, {x: 4, y: 10}, {x: 5, y: 10}, {x: 14, y: 10}, {x: 15, y: 10}],
+                    5: [{x: 8, y: 8}, {x: 9, y: 8}, {x: 10, y: 8}, {x: 11, y: 8}, {x: 8, y: 11}, {x: 9, y: 11}, {x: 10, y: 11}, {x: 11, y: 11}]
+                };
+                obstacles = [...(wallConfigs[Math.min(level, 5)] || wallConfigs[5])];
+            }
+        }
+
+        function createParticles(x, y, count = 8) {
+            const px = (x + 0.5) * tileSize;
+            const py = (y + 0.5) * tileSize;
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2 + 1;
+                particles.push({
+                    x: px, y: py,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1.0,
+                    decay: Math.random() * 0.05 + 0.03
+                });
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('levelDisplay').innerText = level;
+            document.getElementById('highScoreDisplay').innerText = highScore;
+        }
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            direction = nextDirection;
+            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+            if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+                triggerGameOver();
+                return;
+            }
+
+            for (let part of snake) {
+                if (head.x === part.x && head.y === part.y) {
+                    triggerGameOver();
+                    return;
+                }
+            }
+
+            for (let obs of obstacles) {
+                if (head.x === obs.x && head.y === obs.y) {
+                    triggerGameOver();
+                    return;
+                }
+            }
+
+            if (head.x === food.x && head.y === food.y) {
+                playSound('eat');
+                score += food.special ? 30 : 10;
+                createParticles(food.x, food.y, 12);
+
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('nokia_snake_highscore', highScore);
+                }
+
+                let newLevel = Math.floor(score / 50) + 1;
+                if (newLevel !== level) {
+                    level = newLevel;
+                    gameSpeed = Math.max(50, 110 - (level - 1) * 12);
+                    generateObstacles();
+                    restartInterval();
+                }
+                spawnFood();
+            } else {
+                snake.pop();
+            }
+
+            snake.unshift(head);
+            playSound('move');
+
+            if (food.timer > 0) {
+                food.timer--;
+                if (food.timer <= 0 && food.special) spawnFood();
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= p.decay;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            updateUI();
+            draw();
+        }
+
+        function draw() {
+            ctx.fillStyle = COLOR_BG;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = COLOR_OBSTACLE;
+            for (let obs of obstacles) {
+                ctx.fillRect(obs.x * tileSize + 1, obs.y * tileSize + 1, tileSize - 2, tileSize - 2);
+                ctx.fillStyle = '#1d2417';
+                ctx.fillRect(obs.x * tileSize + 3, obs.y * tileSize + 3, tileSize - 6, tileSize - 6);
+                ctx.fillStyle = COLOR_OBSTACLE;
+            }
+
+            ctx.fillStyle = COLOR_FOOD;
+            if (food.special) {
+                ctx.fillRect((food.x + 0.2) * tileSize, (food.y + 0.2) * tileSize, tileSize * 0.6, tileSize * 0.6);
+                ctx.fillStyle = COLOR_BG;
+                ctx.fillRect((food.x + 0.4) * tileSize, (food.y + 0.4) * tileSize, tileSize * 0.2, tileSize * 0.2);
+            } else {
+                ctx.fillRect(food.x * tileSize + 2, food.y * tileSize + 2, tileSize - 4, tileSize - 4);
+            }
+
+            snake.forEach((part, index) => {
+                ctx.fillStyle = COLOR_SNAKE;
+                const rx = part.x * tileSize + 1;
+                const ry = part.y * tileSize + 1;
+                const rSize = tileSize - 2;
+
+                ctx.fillRect(rx, ry, rSize, rSize);
+
+                if (index === 0) {
+                    ctx.fillStyle = COLOR_BG;
+                    let eye1x = rx + 3, eye1y = ry + 3;
+                    let eye2x = rx + rSize - 5, eye2y = ry + rSize - 5;
+                    
+                    if (direction.x === 1) { eye1x = rx + rSize - 5; eye1y = ry + 3; eye2x = rx + rSize - 5; eye2y = ry + rSize - 5; }
+                    else if (direction.x === -1) { eye1x = rx + 3; eye1y = ry + 3; eye2x = rx + 3; eye2y = ry + rSize - 5; }
+                    else if (direction.y === 1) { eye1x = rx + 3; eye1y = ry + rSize - 5; eye2x = rx + rSize - 5; eye2y = ry + rSize - 5; }
+                    else if (direction.y === -1) { eye1x = rx + 3; eye1y = ry + 3; eye2x = rx + rSize - 5; eye2y = ry + 3; }
+
+                    ctx.fillRect(eye1x, eye1y, 2, 2);
+                    ctx.fillRect(eye2x, eye2y, 2, 2);
+                } else {
+                    ctx.fillStyle = COLOR_BG;
+                    ctx.fillRect(rx + 4, ry + 4, rSize - 8, rSize - 8);
+                }
+            });
+
+            ctx.fillStyle = COLOR_SNAKE;
+            for (let p of particles) {
+                ctx.globalAlpha = p.life;
+                ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            playSound('start');
+            initGame();
+            gameState = 'PLAYING';
+            hideOverlay();
+            restartInterval();
+        }
+
+        function pauseGame() {
+            if (gameState === 'PLAYING') {
+                gameState = 'PAUSED';
+                clearInterval(gameInterval);
+                showOverlay('PAUSED', 'Game Paused\nPress Resume to Continue', 'RESUME');
+            } else if (gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                hideOverlay();
+                restartInterval();
+            }
+        }
+
+        function triggerGameOver() {
+            gameState = 'GAMEOVER';
+            clearInterval(gameInterval);
+            playSound('gameover');
+            showOverlay('GAME OVER', `Final Score: ${score}\nHigh Score: ${highScore}`, 'PLAY AGAIN');
+        }
+
+        function restartInterval() {
+            clearInterval(gameInterval);
+            gameInterval = setInterval(update, gameSpeed);
+        }
+
+        function showOverlay(title, subtitle, btnText) {
+            const overlay = document.getElementById('screenOverlay');
+            document.getElementById('overlayTitle').innerText = title;
+            document.getElementById('overlaySubtitle').innerText = subtitle;
+            document.getElementById('overlayBtn').innerText = btnText;
+            document.getElementById('pauseStatus').innerText = gameState === 'PAUSED' ? 'PAUSE' : '';
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+        }
+
+        function hideOverlay() {
+            const overlay = document.getElementById('screenOverlay');
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('pauseStatus').innerText = '';
+        }
+
+        window.addEventListener('keydown', e => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+
+            if (e.key === ' ' || e.key === 'p' || e.key === 'P') {
+                if (gameState === 'PLAYING' || gameState === 'PAUSED') pauseGame();
+                else if (gameState === 'GAMEOVER' || gameState === 'IDLE') startGame();
+                return;
+            }
+
+            if (gameState !== 'PLAYING') {
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(e.key)) {
+                    startGame();
+                }
+                return;
+            }
+
+            switch (e.key) {
+                case 'ArrowUp': case 'w': case 'W':
+                    if (direction.y === 0) nextDirection = { x: 0, y: -1 }; break;
+                case 'ArrowDown': case 's': case 'S':
+                    if (direction.y === 0) nextDirection = { x: 0, y: 1 }; break;
+                case 'ArrowLeft': case 'a': case 'A':
+                    if (direction.x === 0) nextDirection = { x: -1, y: 0 }; break;
+                case 'ArrowRight': case 'd': case 'D':
+                    if (direction.x === 0) nextDirection = { x: 1, y: 0 }; break;
+            }
+        });
+
+        function setDir(x, y) {
+            if (gameState !== 'PLAYING') {
+                if (gameState === 'IDLE' || gameState === 'GAMEOVER') startGame();
+                else if (gameState === 'PAUSED') pauseGame();
+                return;
+            }
+            if ((x !== 0 && direction.x === 0) || (y !== 0 && direction.y === 0)) {
+                nextDirection = { x, y };
+            }
+        }
+
+        document.getElementById('btnUp').addEventListener('click', () => setDir(0, -1));
+        document.getElementById('btnDown').addEventListener('click', () => setDir(0, 1));
+        document.getElementById('btnLeft').addEventListener('click', () => setDir(-1, 0));
+        document.getElementById('btnRight').addEventListener('click', () => setDir(1, 0));
+
+        document.getElementById('btnAction').addEventListener('click', () => {
+            if (gameState === 'PLAYING' || gameState === 'PAUSED') pauseGame();
+            else startGame();
+        });
+
+        document.getElementById('overlayBtn').addEventListener('click', () => {
+            if (gameState === 'PAUSED') pauseGame();
+            else startGame();
+        });
+
+        document.getElementById('btnPause').addEventListener('click', () => {
+            if (gameState === 'PLAYING' || gameState === 'PAUSED') pauseGame();
+        });
+
+        document.getElementById('btnRestart').addEventListener('click', () => {
+            startGame();
+        });
+
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        const soundStatus = document.getElementById('soundStatus');
+        soundToggleBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundToggleBtn.innerHTML = soundEnabled ? '<span>🔊 SND</span>' : '<span>🔇 MUTE</span>';
+            soundStatus.innerText = soundEnabled ? 'SND: ON' : 'SND: OFF';
+        });
+
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            if (gameState === 'PLAYING') pauseGame();
+            else showOverlay('NOKIA MENU', 'High Score: ' + highScore + '\nLevel: ' + level, 'RESUME');
+        });
+
+        initGame();
+        draw();
+    </script>
+</body>
+</html>
