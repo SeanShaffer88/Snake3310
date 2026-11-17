@@ -8,6 +8,12 @@ Complete, feature-rich retro Nokia 3310 Snake game application in a single file 
 
 Nothing to install. Open the link and press **START GAME** (or any arrow key).
 
+<p align="center">
+  <a href="https://seanshaffer88.github.io/Snake3310/">
+    <img src="screenshot.png" alt="Snake3310 start screen on a Nokia 3310 style phone, with the D-pad and buttons below the display" width="360">
+  </a>
+</p>
+
 ## How to play
 
 | Action | Keyboard | On-screen |
